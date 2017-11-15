@@ -6,6 +6,7 @@ ARG OS_DISTRIBUTION=ubuntu
 ARG OS_VERSION=16.04
 ARG USER=abienkow
 # --
+ENV USER=$USER
 ENV CHEFDK_PACKAGE_FILE="chefdk_${CHEFDK_VERSION}-1_amd64.deb"
 ENV CHEFDK_PACKAGE_URL="https://packages.chef.io/files/stable/chefdk/${CHEFDK_VERSION}/${OS_DISTRIBUTION}/${OS_VERSION}/${CHEFDK_PACKAGE_FILE}"
 # -- --
@@ -13,27 +14,24 @@ ENV CHEFDK_PACKAGE_URL="https://packages.chef.io/files/stable/chefdk/${CHEFDK_VE
 RUN apt-get update \
  && apt-get install -y \
     autoconf \
+    bash-completion \
     binutils-doc \
     bison \
     build-essential \
-    libssl-dev \
-    libreadline-dev \
-    flex \
-    gettext \
-    git-core \
-    ncurses-dev \
+    curl \
+    dnsutils \
+    git \
+    iputils-ping \
     openssh-server \
+    openssl \
+    netcat \
+    python-pip \
     sudo \
-    zlib1g-dev \
+    tmux \
+    vim \
+    wget \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
-
-# -- --
-# -- add user
-RUN groupadd -g 1000 $USER \
- && useradd -m -g $USER -s /bin/bash $USER \
- && echo 'eval -e "\n$(chef shell-init bash)"' >> /home/$USER/.bashrc \
- && echo 'abienkow ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/abienkow
 
 # -- --
 # -- chefdk specific version requested
@@ -42,10 +40,17 @@ RUN curl -Lo $CHEFDK_PACKAGE_FILE $CHEFDK_PACKAGE_URL \
  && dpkg -i $CHEFDK_PACKAGE_FILE \
  && rm -f $CHEFDK_PACKAGE_FILE
 
-# -- become user
-USER $USER
+# -- --
+# -- entrypoint file
+ADD entrypoint.sh /
+
+# -- --
+# -- fix sshd start problem on ubuntu platform
+RUN mkdir -p /var/run/sshd \
+ && chmod 0755 /var/run/sshd \
+ && chmod +x /entrypoint.sh
 
 # -- --
 # -- run sshd
 EXPOSE 22
-CMD ["/usr/bin/sshd", "-D"]
+ENTRYPOINT ["/entrypoint.sh"]
